@@ -1,0 +1,6 @@
+{
+  "name": "Daily Hierarchical News Reader",
+  "description": "An Inshorts-style daily news reader with vertical scroll, swipe-based hierarchical navigation (Global/Geography/Country/Sector/Industry/Stock), an interactive mind map visualizer, and Google Sheets synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
