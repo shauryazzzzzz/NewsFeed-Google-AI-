@@ -14,9 +14,9 @@ provider.addScope('https://www.googleapis.com/auth/drive.file');
 let isSigningIn = false;
 // Cache the access token in memory.
 let cachedAccessToken: string | null = null;
-// Store in session storage temporarily to persist on refresh but keep safe
+// Store in storage to persist on refresh but keep safe
 try {
-  const saved = sessionStorage.getItem('news_oauth_token');
+  const saved = localStorage.getItem('news_oauth_token') || sessionStorage.getItem('news_oauth_token');
   if (saved) {
     cachedAccessToken = saved;
   }
@@ -30,6 +30,18 @@ export const initAuth = (
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
+    // Attempt to re-load token from storage in case it was written asynchronously
+    if (!cachedAccessToken) {
+      try {
+        const saved = localStorage.getItem('news_oauth_token') || sessionStorage.getItem('news_oauth_token');
+        if (saved) {
+          cachedAccessToken = saved;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     if (user) {
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
@@ -40,6 +52,7 @@ export const initAuth = (
     } else {
       cachedAccessToken = null;
       try {
+        localStorage.removeItem('news_oauth_token');
         sessionStorage.removeItem('news_oauth_token');
       } catch (e) {}
       if (onAuthFailure) onAuthFailure();
@@ -59,6 +72,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 
     cachedAccessToken = credential.accessToken;
     try {
+      localStorage.setItem('news_oauth_token', cachedAccessToken);
       sessionStorage.setItem('news_oauth_token', cachedAccessToken);
     } catch (e) {}
     return { user: result.user, accessToken: cachedAccessToken };
@@ -78,6 +92,7 @@ export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
   try {
+    localStorage.removeItem('news_oauth_token');
     sessionStorage.removeItem('news_oauth_token');
   } catch (e) {}
 };

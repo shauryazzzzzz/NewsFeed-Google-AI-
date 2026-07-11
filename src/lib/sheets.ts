@@ -191,7 +191,7 @@ export async function appendNewsToTab(token: string, spreadsheetId: string, date
 }
 
 export async function overwriteTabWithAIStories(token: string, spreadsheetId: string, dateStr: string, items: NewsItem[]): Promise<void> {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(dateStr)}!A1:K100?valueInputOption=USER_ENTERED`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(dateStr)}!A1:L150?valueInputOption=USER_ENTERED`;
   
   const formattedRows: any[][] = [
     ['ID', 'Level', 'ParentID', 'CategoryName', 'Title', 'Summary', 'Source', 'Link', 'ImageURL', 'ChangePercent', 'BenchmarkLabel', 'CapGroup'],
@@ -214,7 +214,7 @@ export async function overwriteTabWithAIStories(token: string, spreadsheetId: st
   await sheetsFetch(url, token, {
     method: 'PUT',
     body: JSON.stringify({
-      range: `${dateStr}!A1:K100`,
+      range: `${dateStr}!A1:L150`,
       majorDimension: 'ROWS',
       values: formattedRows
     })
@@ -476,10 +476,10 @@ export async function populateTabWithSampleData(token: string, spreadsheetId: st
   });
 }
 
-export async function seed500PastWeekNews(token: string, spreadsheetId: string): Promise<string[]> {
-  // Generate past 7 dates
+export async function seed500PastWeekNews(token: string, spreadsheetId: string, daysCount: number = 7): Promise<string[]> {
+  // Generate past dates
   const dates: string[] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < daysCount; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const pad = (n: number) => n.toString().padStart(2, '0');

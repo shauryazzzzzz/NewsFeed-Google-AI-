@@ -23,6 +23,8 @@ export interface NewsItem {
   changePercent?: number; // associated daily change % (e.g. +1.45%, -0.8%)
   benchmarkLabel?: string; // associated asset or tracker name (e.g., "NIFTY 50", "USD/INR", "NVDA", "GDP Basis")
   capGroup?: 'Large' | 'Mid' | 'Small'; // India IT Stock sub-hierarchical level
+  marketCapImpact?: string; // e.g. "+$54.2 Billion" or "-Rs. 12,000 Crore"
+  marketCapDeltaNumeric?: number; // absolute dollar or rupee impact value in Billions for sorting/ranking
 }
 
 export interface SpreadsheetInfo {

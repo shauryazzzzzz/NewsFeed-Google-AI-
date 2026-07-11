@@ -4,14 +4,14 @@ import { NewsItem, HierarchyLevel } from '../types';
  * Generate 500+ high-quality procedurally randomized financial daily hierarchy news items
  * spanning the last 7 days from the specified baseline date.
  */
-export function generateLastWeek500News(baselineDateStr: string): NewsItem[] {
+export function generateLastWeek500News(baselineDateStr: string, daysCount: number = 7): NewsItem[] {
   const result: NewsItem[] = [];
   
-  // Calculate the last 7 dates
+  // Calculate the last dates
   const dates: string[] = [];
   const baseDate = new Date(baselineDateStr);
   
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < daysCount; i++) {
     const d = new Date(baseDate);
     d.setDate(baseDate.getDate() - i);
     const yyyy = d.getFullYear();

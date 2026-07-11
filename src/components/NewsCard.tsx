@@ -16,6 +16,7 @@ interface NewsCardProps {
   hasParent: boolean;
   keyboardGuide?: boolean;
   progressPercent?: number;
+  isFullScreen?: boolean;
 }
 
 const LEVEL_LABELS: Record<HierarchyLevel, string> = {
@@ -48,7 +49,8 @@ export default function NewsCard({
   hasChildren,
   hasParent,
   keyboardGuide = true,
-  progressPercent = 0
+  progressPercent = 0,
+  isFullScreen = false
 }: NewsCardProps) {
   const theme = LEVEL_THEMES[item.level] || LEVEL_THEMES.Global;
   const imageUrl = item.imageUrl || `https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80`;
@@ -98,7 +100,7 @@ export default function NewsCard({
 
   return (
     <div 
-      className="w-full max-w-lg mx-auto h-[550px] select-none touch-none relative px-6 sm:px-0"
+      className={isFullScreen ? "w-full h-full select-none touch-none relative" : "w-full max-w-4xl mx-auto h-[676px] max-h-[85vh] select-none touch-none relative px-4 md:px-0 pb-14"}
       onWheel={handleWheel}
       id={`news-viewport-${item.id}`}
     >
@@ -107,7 +109,10 @@ export default function NewsCard({
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
-        className={`w-full h-full bg-white border border-stone-250 text-[#111111] rounded-2xl overflow-hidden relative flex flex-col justify-between cursor-grab active:cursor-grabbing transition-shadow ${cardShadowClass}`}
+        className={isFullScreen 
+          ? "w-full h-full bg-white dark:bg-stone-900 border border-transparent text-[#111111] overflow-hidden relative flex flex-col justify-between cursor-grab active:cursor-grabbing"
+          : `w-full h-[calc(100%-56px)] bg-white dark:bg-stone-900 border border-stone-250 dark:border-stone-800 text-[#111111] rounded-2xl overflow-hidden relative flex flex-col justify-between cursor-grab active:cursor-grabbing transition-shadow ${cardShadowClass}`
+        }
         whileDrag={{ scale: 0.98 }}
         id={`news-card-inner-${item.id}`}
       >
@@ -122,7 +127,7 @@ export default function NewsCard({
         </div>
 
         {/* Full-bleed visual top portion (Inshorts Crop) */}
-        <div className="h-[210px] relative overflow-hidden bg-stone-900 pointer-events-none">
+        <div className={isFullScreen ? "h-[35vh] md:h-[40vh] relative overflow-hidden bg-stone-900 pointer-events-none" : "h-[210px] md:h-[280px] relative overflow-hidden bg-stone-900 pointer-events-none"}>
           <img
             src={imageUrl}
             alt={item.categoryName}
@@ -171,36 +176,36 @@ export default function NewsCard({
         </div>
 
         {/* Content Section (Typeset for high readability density) */}
-        <div className="p-5 pb-[54px] flex-1 flex flex-col justify-between bg-[#FCFAF7] overflow-y-auto">
+        <div className="p-6 md:p-8 pb-[140px] flex-1 flex flex-col justify-between bg-[#FCFAF7] dark:bg-[#0e0d0b] overflow-y-auto">
           <div>
-            <h2 className="text-[17px] md:text-[19px] font-sans font-black text-stone-950 tracking-tight leading-[1.3] mb-2 text-left">
+            <h2 className="text-[18px] md:text-2xl font-sans font-black text-stone-950 dark:text-[#f1e9e5] tracking-tight leading-[1.3] mb-3 text-left">
               {item.title}
             </h2>
 
             {/* Inshorts signature Meta bar (short by author / date) */}
-            <div className="text-[10px] text-stone-500 font-sans mb-3 text-left flex flex-wrap items-center gap-1.5 leading-none">
-              <span className="text-stone-400/80">short by</span>
-              <span className="font-bold text-stone-800 uppercase tracking-widest text-[9px]">{item.source || 'Inshorts'}</span>
-              <span className="text-stone-300 font-light">•</span>
-              <span className="font-semibold text-stone-500">{item.date}</span>
+            <div className="text-[10px] text-stone-500 dark:text-[#e6e0dc] font-sans mb-3 text-left flex flex-wrap items-center gap-1.5 leading-none">
+              <span className="text-stone-400/80 dark:text-stone-500">short by</span>
+              <span className="font-bold text-stone-800 dark:text-stone-200 uppercase tracking-widest text-[9px]">{item.source || 'Inshorts'}</span>
+              <span className="text-stone-300 dark:text-stone-600 font-light">•</span>
+              <span className="font-semibold text-stone-500 dark:text-stone-400">{item.date}</span>
             </div>
 
             {/* Asset Impact Metric HUD */}
             {(item.changePercent !== undefined || item.benchmarkLabel) && (
-              <div className="flex items-center gap-2 mb-3 bg-white border border-stone-200/80 rounded-xl p-2.5 shadow-sm text-left">
+              <div className="flex items-center gap-2 mb-3 bg-white dark:bg-stone-800 border border-stone-200/80 dark:border-stone-700 rounded-xl p-2.5 shadow-sm text-left">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-mono font-extrabold uppercase tracking-widest text-[#888888] leading-none mb-0.5">impacted asset benchmark</span>
-                  <span className="text-xs font-extrabold text-stone-900 font-sans tracking-tight">{item.benchmarkLabel || 'Benchmark'}</span>
+                  <span className="text-[8px] font-mono font-extrabold uppercase tracking-widest text-[#888888] leading-none mb-0.5">impacted index / ticker</span>
+                  <span className="text-xs font-extrabold text-stone-900 dark:text-stone-100 font-sans tracking-tight">{item.benchmarkLabel || 'Live Benchmark'}</span>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <span className={`text-[11px] font-black font-mono px-2 py-0.5 rounded border leading-none ${
                     (item.changePercent ?? 0) >= 0 
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                      : 'bg-red-50 text-red-800 border-red-200'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
+                      : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'
                   }`}>
                     {(item.changePercent ?? 0) >= 0 ? '+' : ''}{item.changePercent}%
                   </span>
-                  <span className={`text-[9px] uppercase font-mono font-bold tracking-wider leading-none ${(item.changePercent ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                  <span className={`text-[9px] uppercase font-mono font-bold tracking-wider leading-none ${(item.changePercent ?? 0) >= 0 ? 'text-emerald-700 dark:text-emerald-500' : 'text-red-700 dark:text-red-500'}`}>
                     {(item.changePercent ?? 0) >= 0 ? 'Bullish' : 'Bearish'}
                   </span>
                 </div>
@@ -208,30 +213,13 @@ export default function NewsCard({
             )}
 
             {/* Summary text block aligned with proper margin spacing */}
-            <p className="text-stone-700 leading-relaxed font-sans text-xs sm:text-[13px] md:text-sm text-left tracking-normal text-justify">
+            <p className="text-stone-900 dark:text-stone-300 font-medium leading-relaxed font-sans text-[13px] sm:text-[14px] md:text-[15.5px] text-left tracking-normal text-justify max-w-2xl mb-12">
               {item.summary || "No summary details are synchronized for this card entry."}
             </p>
           </div>
         </div>
 
-        {/* Inshorts Signature Absolute Footer Banner strip */}
-        {item.link ? (
-          <a
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            className="absolute bottom-0 left-0 right-0 h-[42px] bg-stone-900 hover:bg-stone-850 text-stone-50 text-[10px] font-extrabold uppercase tracking-widest flex items-center justify-between px-4 transition-colors z-10 cursor-pointer border-t border-black shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-          >
-            <span className="truncate">read more at <strong className="font-sans font-black text-red-400">{item.source || 'Bloomberg'}</strong></span>
-            <span className="flex items-center gap-1 text-[9px] text-stone-400 shrink-0 capitalize">
-              tap to open <ArrowUpRight className="w-3.5 h-3.5 text-red-500 shrink-0" />
-            </span>
-          </a>
-        ) : (
-          <div className="absolute bottom-0 left-0 right-0 h-[42px] bg-stone-900 border-t border-black text-stone-400 text-[10px] font-sans font-bold flex items-center px-4 z-20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            Daily Hierarchical News Digest
-          </div>
-        )}
+        {/* Bottom Banner Removed as requested to avoid text overlap */}
       </motion.div>
 
       {/* Floating Manual Navigation controls around the card (visible and accessible on both mobile and desktop) */}
@@ -239,10 +227,10 @@ export default function NewsCard({
         <button
           onClick={onSwipeLeft}
           disabled={!hasParent}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 bg-white/95 backdrop-blur-md shadow-md hover:bg-stone-50 hover:border-stone-400 flex items-center justify-center text-stone-700 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 dark:border-stone-700 bg-white/95 dark:bg-[#0e0d0b]/95 backdrop-blur-md shadow-md hover:bg-stone-50 dark:hover:bg-stone-800 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center text-stone-700 dark:text-stone-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
           title="Go Above Level"
         >
-          <ChevronLeft className="w-4 h-4 text-stone-800" />
+          <ChevronLeft className="w-4 h-4 text-stone-800 dark:text-stone-200" />
         </button>
       </div>
 
@@ -250,41 +238,41 @@ export default function NewsCard({
         <button
           onClick={onSwipeRight}
           disabled={!hasChildren}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 bg-white/95 backdrop-blur-md shadow-md hover:bg-stone-50 hover:border-stone-400 flex items-center justify-center text-stone-700 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 dark:border-stone-700 bg-white/95 dark:bg-[#0e0d0b]/95 backdrop-blur-md shadow-md hover:bg-stone-50 dark:hover:bg-stone-800 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center text-stone-700 dark:text-stone-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
           title="Go Deeper Level"
         >
-          <ChevronRight className="w-4 h-4 text-stone-800" />
+          <ChevronRight className="w-4 h-4 text-stone-800 dark:text-stone-200" />
         </button>
       </div>
 
-      <div className="absolute left-1/2 -top-6 sm:-top-12 -translate-x-1/2 flex gap-2 z-20 transition-opacity">
+      <div className="absolute left-1/2 top-4 sm:-top-12 -translate-x-1/2 flex gap-2 z-20 transition-opacity">
         <button
           onClick={onSwipeUp}
           disabled={!hasPrevSibling}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 bg-white/95 backdrop-blur-md shadow-md hover:bg-stone-50 hover:border-stone-400 flex items-center justify-center text-stone-700 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 dark:border-stone-700 bg-white/95 dark:bg-[#0e0d0b]/95 backdrop-blur-md shadow-md hover:bg-stone-50 dark:hover:bg-stone-800 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center text-stone-700 dark:text-stone-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
           title="Scroll Up (Previous Sibling Card)"
         >
-          <ChevronUp className="w-4 h-4 text-stone-800" />
+          <ChevronUp className="w-4 h-4 text-stone-800 dark:text-stone-200" />
         </button>
       </div>
 
-      <div className="absolute left-1/2 -bottom-6 sm:-bottom-12 -translate-x-1/2 flex gap-2 z-20 transition-opacity">
+      <div className="absolute left-1/2 bottom-[72px] sm:-bottom-12 -translate-x-1/2 flex gap-2 z-20 transition-opacity">
         <button
           onClick={onSwipeDown}
           disabled={!hasNextSibling}
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 bg-white/95 backdrop-blur-md shadow-md hover:bg-stone-50 hover:border-stone-400 flex items-center justify-center text-stone-700 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-stone-250 dark:border-stone-700 bg-white/95 dark:bg-[#0e0d0b]/95 backdrop-blur-md shadow-md hover:bg-stone-50 dark:hover:bg-stone-800 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center text-stone-700 dark:text-stone-300 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-95"
           title="Scroll Down (Next Sibling Card)"
         >
-          <ChevronDown className="w-4 h-4 text-stone-800" />
+          <ChevronDown className="w-4 h-4 text-stone-800 dark:text-stone-200" />
         </button>
       </div>
 
       {/* Elegant Mini Keyboard Hud indicators right below */}
       {keyboardGuide && (
-        <div className="absolute -bottom-14 left-0 right-0 hidden md:flex items-center justify-center gap-3 text-[10px] text-stone-400 font-mono bg-stone-50/50 p-1.5 rounded-lg border border-stone-200 max-w-sm mx-auto shadow-sm">
-          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white border border-stone-250 rounded shadow-sm text-stone-700 font-bold">↑</kbd><kbd className="px-1 bg-white border border-stone-250 rounded shadow-sm text-stone-700 font-bold">↓</kbd> Sibling</span>
-          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white border border-stone-250 rounded shadow-sm text-stone-700 font-bold">←</kbd> Above</span>
-          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white border border-stone-250 rounded shadow-sm text-stone-700 font-bold">→</kbd> Deeper</span>
+        <div className="absolute -bottom-14 left-0 right-0 hidden md:flex items-center justify-center gap-3 text-[10px] text-stone-400 dark:text-stone-500 font-mono bg-stone-50/50 dark:bg-[#0e0d0b]/50 p-1.5 rounded-lg border border-stone-200 dark:border-stone-800 max-w-sm mx-auto shadow-sm">
+          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white dark:bg-stone-800 border border-stone-250 dark:border-stone-700 rounded shadow-sm text-stone-700 dark:text-stone-300 font-bold">↑</kbd><kbd className="px-1 bg-white dark:bg-stone-800 border border-stone-250 dark:border-stone-700 rounded shadow-sm text-stone-700 dark:text-stone-300 font-bold">↓</kbd> Sibling</span>
+          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white dark:bg-stone-800 border border-stone-250 dark:border-stone-700 rounded shadow-sm text-stone-700 dark:text-stone-300 font-bold">←</kbd> Above</span>
+          <span className="flex items-center gap-1 font-semibold"><kbd className="px-1 bg-white dark:bg-stone-800 border border-stone-250 dark:border-stone-700 rounded shadow-sm text-stone-700 dark:text-stone-300 font-bold">→</kbd> Deeper</span>
         </div>
       )}
     </div>
