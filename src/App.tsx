@@ -65,306 +65,7 @@ import MindMap from './components/MindMap';
 import AdminPanel from './components/AdminPanel';
 import VerticalHierarchyMap from './components/VerticalHierarchyMap';
 
-// High impact sample fallback dataset used for Sandbox exploration
-const SANDBOX_MOCKED_DATE = '2026-06-19';
-const OLD_UNUSED_NEWS: NewsItem[] = [
-  // ---------------- TODAY (2026-06-19) ----------------
-  {
-    id: 'G1',
-    level: 'Global',
-    parentId: null,
-    categoryName: 'Global Economy',
-    title: 'Global Markets Pivot on Inflation Data & High Interest Rates',
-    summary: 'World stock markets fluctuated wildy as consumer demand prints came in mixed. Investors globally are watching closely for signals from premier monetary authorities on easing credit restrictions in the final quarters, shifting massive cross-border asset reallocations.',
-    source: 'Financial Times',
-    link: 'https://ft.com',
-    imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 0.25,
-    benchmarkLabel: 'MSCI World'
-  },
-  {
-    id: 'GEO1',
-    level: 'Geography',
-    parentId: 'G1',
-    categoryName: 'Asia-Pacific',
-    title: 'Asia-Pacific Technology Markets Lead Relocation Wave',
-    summary: 'The broader APAC region reports strong export volumes matching double-digit hardware manufacturing shifts. Tech-friendly economic policies across key tech corridors keep valuations buoyed amid local consumption tailwinds.',
-    source: 'Reuters',
-    link: 'https://reuters.com',
-    imageUrl: 'https://images.unsplash.com/photo-1444653389962-8149286c578a?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 1.15,
-    benchmarkLabel: 'APAC Index'
-  },
-  {
-    id: 'GEO2',
-    level: 'Geography',
-    parentId: 'G1',
-    categoryName: 'North America',
-    title: 'North American Supply Lines Scale Fab Infrastructure',
-    summary: 'US and Canadian corporate capitals are fast-tracking data-center investments. The continent is seeing monumental build schemes aimed at localizing silicon lines, fueled by multi-billion public grants and state mandates.',
-    source: 'Bloomberg',
-    link: 'https://bloomberg.com',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: -0.48,
-    benchmarkLabel: 'S&P 500'
-  },
-  {
-    id: 'C1',
-    level: 'Country',
-    parentId: 'GEO1',
-    categoryName: 'India',
-    title: 'India Gains Ground in Global Advanced Electronics Assembly',
-    summary: "India's production incentive strategies have successfuly drawn international hardware titans to double assembly operations. Domestic manufacturing clusters expand rapidly, creating professional engineering workforces at scale.",
-    source: 'Economic Times',
-    link: 'https://economictimes.indiatimes.com',
-    imageUrl: 'https://images.unsplash.com/photo-1532375811409-90d11193060b?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 1.25,
-    benchmarkLabel: 'NIFTY 50'
-  },
-  {
-    id: 'C2',
-    level: 'Country',
-    parentId: 'GEO2',
-    categoryName: 'United States',
-    title: 'United States Approves Billions for Advanced Chip Fabs',
-    summary: 'Federal agencies unlocked a massive second tranche of domestic manufacturing grants. New fabrication facilities across Arizona, Oregon and Ohio are breaking ground to anchor regional hardware independence.',
-    source: 'WSJ',
-    link: 'https://wsj.com',
-    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: -0.15,
-    benchmarkLabel: 'NASDAQ'
-  },
-  {
-    id: 'S1',
-    level: 'Sector',
-    parentId: 'C1',
-    categoryName: 'Technology & IT',
-    title: 'NIFTY IT Index Surges as Government Announces Tax Relief for Digital Exporters',
-    summary: 'The subcontinental IT services sector is receiving heavy digital infrastructure modernizing workloads. A surge in long-term enterprise SaaS contracts and hybrid cloud optimization requests are leading to positive guidance for top-tier software exporters.',
-    source: 'TechCrunch',
-    link: 'https://techcrunch.com',
-    imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 2.40,
-    benchmarkLabel: 'NIFTY IT'
-  },
-  {
-    id: 'S2',
-    level: 'Sector',
-    parentId: 'C2',
-    categoryName: 'Tech Hardware & Systems',
-    title: 'US Tech Infrastructure Directing Capital into GPU Clusters',
-    summary: 'With demand for AI model training skyrocketing, major tech providers are upgrading their hardware footprints. Venture backing is reallocating toward custom chips, cooling setups, and fiber grids.',
-    source: 'Wired',
-    link: 'https://wired.com',
-    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 1.10,
-    benchmarkLabel: 'SOX Index'
-  },
-  {
-    id: 'I1',
-    level: 'Industry',
-    parentId: 'S1',
-    categoryName: 'IT Services & Consulting',
-    title: 'NIFTYITBEES Attracts Heavy Accruals as IT Budgets Pivot Back to Offshore Fabs',
-    summary: 'Software-as-a-service platforms and consulting services are shifting pricing away from user seats toward agentic workflow completions. Automated client handling and code debugging units show high enterprise subscription rates.',
-    source: 'SaaS Business Journal',
-    link: 'https://saasbj.com',
-    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 1.85,
-    benchmarkLabel: 'NIFTYITBEES'
-  },
-  {
-    id: 'I2',
-    level: 'Industry',
-    parentId: 'S2',
-    categoryName: 'Semiconductors & Accelerators',
-    title: 'Silicon Designers Focus on Dynamic Power-Management Tooling',
-    summary: 'As power budgets spike at global datacenters, the primary challenge has turned from compute speed to watts-per-flop efficiency. Breakthroughs in packaging and custom instructions show high promise.',
-    source: 'Semiconductor Today',
-    link: 'https://semitoday.com',
-    imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 2.90,
-    benchmarkLabel: 'WFE Capex Index'
-  },
-  {
-    id: 'ST1',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Infosys Corp',
-    title: 'Infosys Secures Massive $1.5 Billion Multi-Year Cloud Upgrade Contract',
-    summary: 'Shares of Infosys rallied after closing a mega-deal with an international banking client to revitalize their entire digital ledger stack and configure cloud integrations, bringing stable recurring revenues.',
-    source: 'NDTV Profit',
-    link: 'https://ndtv.com',
-    imageUrl: 'https://images.unsplash.com/photo-1542744094-3a31f103e35f?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 3.40,
-    benchmarkLabel: 'INFY',
-    capGroup: 'Large'
-  },
-  {
-    id: 'ST2',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Tata Consultancy Services',
-    title: 'TCS Partners with Major EU Insurer for Automation Migration',
-    summary: 'TCS reports landing a major long-term contract to migrate core transaction processing engines to secure cloud environments, utilizing tailored SaaS layouts and AI agents to handle millions of policy claims.',
-    source: 'MoneyControl',
-    link: 'https://moneycontrol.com',
-    imageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 1.95,
-    benchmarkLabel: 'TCS',
-    capGroup: 'Large'
-  },
-  {
-    id: 'ST5',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Wipro Ltd',
-    title: 'Wipro Lands Strategic Cloud Optimization & Security Deal',
-    summary: 'Wipro shares advanced as the firm announced a comprehensive digital infrastructure contract with an APAC energy provider to secure endpoint systems and modernize high-throughput operational software databases.',
-    source: 'NDTV Profit',
-    link: 'https://ndtv.com',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 2.15,
-    benchmarkLabel: 'WIPRO',
-    capGroup: 'Large'
-  },
-  {
-    id: 'ST_MID1',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'LTIMindtree Ltd',
-    title: 'LTIMindtree Clinches Double Digital Engineering Acceleration Orders',
-    summary: 'LTIMindtree stock surged as the mid-cap IT major closed multiple high-velocity digital engineering deals with global logistics aggregates, reinforcing strong demand resilience outside the traditional Big-3.',
-    source: 'Economic Times',
-    link: 'https://economictimes.indiatimes.com',
-    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 2.80,
-    benchmarkLabel: 'LTIM',
-    capGroup: 'Mid'
-  },
-  {
-    id: 'ST_MID2',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Coforge Ltd',
-    title: 'Coforge Stock Rallies After Upgrading Yearly Margin & Contract Guidance',
-    summary: 'Coforge Limited shares surged 3.1% today after revealing an improved revenue conversion pipeline on newly completed insurance and banking platform modernizations, outperforming general street estimates.',
-    source: 'MoneyControl',
-    link: 'https://moneycontrol.com',
-    imageUrl: 'https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 3.10,
-    benchmarkLabel: 'COFORGE',
-    capGroup: 'Mid'
-  },
-  {
-    id: 'ST_SMALL1',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Saksoft Ltd',
-    title: 'Saksoft Accelerates Global Penetration With Acquisition of Zurich Niche Practice',
-    summary: 'Saksoft Limited reported that its overseas subsidiaries have finalized terms to acquire a boutique analytics consultancy based in Switzerland. This small-cap firm aims to capitalize on premium regional margins.',
-    source: 'Economic Times',
-    link: 'https://economictimes.indiatimes.com',
-    imageUrl: 'https://images.unsplash.com/photo-1542744094-3a31f103e35f?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 4.55,
-    benchmarkLabel: 'SAKSOFT',
-    capGroup: 'Small'
-  },
-  {
-    id: 'ST_SMALL2',
-    level: 'Stock',
-    parentId: 'I1',
-    categoryName: 'Kellton Tech Solutions',
-    title: 'Kellton Tech Secures Core Digital Ledger Modernization in Middle East',
-    summary: 'Kellton Tech Solutions stock touched active daily upper limits following structural digital ledger integration bookings from an oil-rich sovereign logistics manager, boosting small-cap investor confidence.',
-    source: 'Reuters',
-    link: 'https://reuters.com',
-    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-19',
-    changePercent: 5.20,
-    benchmarkLabel: 'KELLTONTEC',
-    capGroup: 'Small'
-  },
-
-  // ---------------- LAST WEEK (2026-06-15) ----------------
-  {
-    id: 'G1',
-    level: 'Global',
-    parentId: null,
-    categoryName: 'Central Banking',
-    title: 'Federal Reserve Holds Interest Rates Steady, Signals One Cut later',
-    summary: 'In an expected move, the Federal Reserve kept overnight benchmark lending rate targets flat. Economic forecasts suggested high focus on incoming employment indices to measure proper disinflation paths.',
-    source: 'CNBC',
-    link: 'https://cnbc.com',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-15',
-    changePercent: -0.12,
-    benchmarkLabel: 'Fed Reserve Rate'
-  },
-  {
-    id: 'ST3',
-    level: 'Stock',
-    parentId: 'I2',
-    categoryName: 'NVIDIA Corp',
-    title: 'NVIDIA Introduces Blackwell Architecture for Core Computing Labs',
-    summary: 'NVIDIA debuted the high-performance Blackwell computing platform. Early telemetry outputs highlight extreme electrical efficiency, rendering it highly competent for trillion-parameter server networks.',
-    source: 'TechCrunch',
-    link: 'https://techcrunch.com',
-    imageUrl: 'https://images.unsplash.com/photo-1591453089816-0fbb971b454c?auto=format&fit=crop&w=600&q=80',
-    date: '2026-06-15',
-    changePercent: 2.45,
-    benchmarkLabel: 'NVDA'
-  },
-
-  // ---------------- LAST MONTH (2026-05-20) ----------------
-  {
-    id: 'G1',
-    level: 'Global',
-    parentId: null,
-    categoryName: 'Global Commodities',
-    title: 'Gold and Copper Prices Spark Widespread Infrastructure Warnings',
-    summary: 'Precious metal indices hit multi-year highs today as industrial demands for wiring, grid expansions, and green power lines outstrip mined metal inputs. Smelters globally warn of raw production quotas through December.',
-    source: 'Reuters',
-    link: 'https://reuters.com',
-    imageUrl: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=600&q=80',
-    date: '2026-05-20',
-    changePercent: 4.80,
-    benchmarkLabel: 'COMEX Copper'
-  },
-
-  // ---------------- LAST QUARTER (2026-04-10) ----------------
-  {
-    id: 'G1',
-    level: 'Global',
-    parentId: null,
-    categoryName: 'Global GDP',
-    title: 'IMF Upgrades Global Economic Outlook Citing Service Resiliencies',
-    summary: 'The International Monetary Fund boosted its global growth projection to 3.2% for the outer years. Positive retail patterns and lower energetic cost metrics have buffered North American and Asian industrial states.',
-    source: 'Bloomberg',
-    link: 'https://bloomberg.com',
-    imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80',
-    date: '2026-04-10',
-    changePercent: 0.30,
-    benchmarkLabel: 'IMF GDP Forecast'
-  }
-];
-
-const SANDBOX_NEWS: NewsItem[] = OLD_UNUSED_NEWS;
+const SANDBOX_NEWS: NewsItem[] = [];
 
 // Helper to recursively collect all descendant news items
 function getDescendantsAndSelf(item: NewsItem, allItems: NewsItem[]): NewsItem[] {
@@ -478,9 +179,9 @@ export default function App() {
   const [isMindMapVisible, setIsMindMapVisible] = useState(false);
 
   // Active Sandbox States for Role simulation
-  const [sandboxNewsStore, setSandboxNewsStore] = useState<NewsItem[]>(SANDBOX_NEWS);
-  const [sandboxDates, setSandboxDates] = useState<string[]>(['2026-06-19']);
-  const [sandboxActiveDate, setSandboxActiveDate] = useState<string>('2026-06-19');
+  const [sandboxNewsStore, setSandboxNewsStore] = useState<NewsItem[]>([]);
+  const [sandboxDates, setSandboxDates] = useState<string[]>([]);
+  const [sandboxActiveDate, setSandboxActiveDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Sheets configuration states
   const [loadingSheets, setLoadingSheets] = useState(false);
@@ -505,6 +206,30 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4500);
+  }, []);
+
+  const fetchTodayLiveNews = useCallback(async (dateStr: string): Promise<NewsItem[]> => {
+    const response = await fetch('/api/generate-news', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ dateStr })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Live news endpoint returned status ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!result.success || !Array.isArray(result.newsItems)) {
+      throw new Error(result.error || 'Failed to fetch live news hierarchy.');
+    }
+
+    return result.newsItems.map((item: any) => ({
+      ...item,
+      date: dateStr
+    }));
   }, []);
 
   // Current reader focused card tracking ID
@@ -555,14 +280,21 @@ export default function App() {
 
     try {
       if (isSandboxMode) {
-        // Fetch strictly from our rich Sandbox dataset
-        const filtered = sandboxNewsStore.filter(item => item.date === sandboxActiveDate);
+        let filtered = sandboxNewsStore.filter(item => item.date === sandboxActiveDate);
+        if (filtered.length === 0) {
+          filtered = await fetchTodayLiveNews(sandboxActiveDate);
+          setSandboxNewsStore(prev => {
+            const rest = prev.filter(x => x.date !== sandboxActiveDate);
+            return [...rest, ...filtered];
+          });
+        }
+
         setNewsItems(filtered);
         if (filtered.length > 0) {
           const firstGlobal = filtered.find(x => x.level === 'Global');
           setActiveNewsId(firstGlobal ? firstGlobal.id : filtered[0].id);
         }
-        setApiNotice(`Loaded dynamic Sandbox pre-categorized news successfully for date ${sandboxActiveDate}!`);
+        setApiNotice(`Loaded live news successfully for date ${sandboxActiveDate}!`);
       } else {
         if (!authToken || !selectedSheetId) {
           throw new Error("No active Google Sheets connection. Connect Sheets first.");
@@ -608,6 +340,44 @@ export default function App() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }, []);
 
+  useEffect(() => {
+    if (isAuthLoading || currentUser || isSandboxMode || selectedSheetId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const bootstrapLiveNews = async () => {
+      setIsSyncing(true);
+      setErrorStatus(null);
+      try {
+        const liveItems = await fetchTodayLiveNews(todayDateStr);
+        if (cancelled) return;
+
+        setSelectedDate(todayDateStr);
+        setSandboxActiveDate(todayDateStr);
+        setNewsItems(liveItems);
+        setActiveNewsId(liveItems.find(x => x.level === 'Global')?.id || liveItems[0]?.id || null);
+        setApiNotice(`Loaded today’s live headlines directly from the RSS news feed for ${todayDateStr}.`);
+      } catch (err: any) {
+        console.error('Bootstrap live feed failed:', err);
+        if (!cancelled) {
+          setErrorStatus(err.message || 'Failed to load today’s live headlines.');
+          addToast('Live Feed Unavailable', 'Could not load the RSS feed on startup.', 'error');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSyncing(false);
+        }
+      }
+    };
+
+    bootstrapLiveNews();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, fetchTodayLiveNews, isAuthLoading, isSandboxMode, selectedSheetId, todayDateStr]);
+
   // Sync auth state and load shared configuration on boot
   useEffect(() => {
     addDiagnosticLog('Initializing main workspace loader...', 'info');
@@ -634,7 +404,6 @@ export default function App() {
           const data = await res.json();
           if (data?.selectedSheetId) {
             setSharedSheetId(data.selectedSheetId);
-            setSelectedSheetId(data.selectedSheetId);
             addDiagnosticLog(`Backend responded: Found default spreadsheet config id [${data.selectedSheetId.substring(0, 8)}...]`, 'info');
             updateStep('env-config', 'success', `Connected: Loaded default workbook ID ending in ...${data.selectedSheetId.substring(data.selectedSheetId.length - 6)}`);
           } else {
@@ -785,21 +554,17 @@ export default function App() {
     } catch (err: any) {
       console.warn('Metadata load failed:', err);
       const errMsg = err.message || 'Error parsing sheets schema metadata via server proxy.';
-      setErrorStatus(`Google Sheet Connection Offline: ${errMsg}. Loading offline fallback.`);
-      addDiagnosticLog(`Google Sheet restricted/missing: ${errMsg}. Auto-fallback active.`, 'warn');
+      setErrorStatus(`Google Sheet connection is offline: ${errMsg}. Loading today's live feed instead.`);
+      addDiagnosticLog(`Google Sheet restricted/missing: ${errMsg}. Falling back to live headline feed.`, 'warn');
       addToast(
-        'Offline Auto-Fallback',
-        'Google Sheet is restricted or missing. Auto-loading local sandbox dataset.',
+        'Live Feed Active',
+        'Google Sheet is restricted or missing. Loading today’s live headlines directly instead.',
         'info'
       );
-      
-      setIsSandboxMode(true);
-      setSandboxNewsStore(SANDBOX_NEWS);
-      setSandboxDates(['2026-06-19']);
-      setSandboxActiveDate('2026-06-19');
-      setNewsItems(SANDBOX_NEWS);
-      setActiveNewsId(SANDBOX_NEWS.length > 0 ? SANDBOX_NEWS[0].id : null);
-      updateStep('sheet-metadata', 'warn', 'Private or missing sheet detected. Applied sandbox fallback.');
+
+      setSelectedDate(todayDateStr);
+      setSandboxActiveDate(todayDateStr);
+      updateStep('sheet-metadata', 'warn', 'Private or missing sheet detected. Falling back to live feed for today.');
     } finally {
       setLoadingSheets(false);
     }
@@ -1052,17 +817,14 @@ export default function App() {
       setErrorStatus(`Google Sheet News Fetch Error: ${err.message || String(err)}.`);
       addDiagnosticLog(`Public news loader failed: ${err.message}. Applying fallback...`, 'warn');
       addToast(
-        'Offline Auto-Fallback',
-        'Google Sheet news loading restricted. Auto-loading sample database.',
+        'Live Feed Active',
+        'Google Sheet news loading is restricted. Switching to today’s live headline feed.',
         'info'
       );
-      
-      setIsSandboxMode(true);
-      setSandboxNewsStore(SANDBOX_NEWS);
-      setSandboxDates(['2026-06-19']);
-      setSandboxActiveDate('2026-06-19');
-      setNewsItems(SANDBOX_NEWS);
-      setActiveNewsId(SANDBOX_NEWS.length > 0 ? SANDBOX_NEWS[0].id : null);
+
+      const liveItems = await fetchTodayLiveNews(activeDate);
+      setNewsItems(liveItems);
+      setActiveNewsId(liveItems.length > 0 ? liveItems.find(x => x.level === 'Global')?.id || liveItems[0].id : null);
     } finally {
       setIsSyncing(false);
     }
@@ -1170,8 +932,9 @@ export default function App() {
         await loadPublicNewsItems(selectedSheetId, selectedDate);
         addToast('Synced', 'Refreshed public container feed.', 'success');
       } else {
-        setNewsItems(SANDBOX_NEWS);
-        addToast('Synced', 'Reloaded default seed news feed.', 'success');
+        const liveItems = await fetchTodayLiveNews(todayDateStr);
+        setNewsItems(liveItems);
+        addToast('Synced', 'Reloaded today’s live feed.', 'success');
       }
     } catch (err: any) {
       addToast('Sync Failed', err?.message || 'Could not synchronize.', 'error');

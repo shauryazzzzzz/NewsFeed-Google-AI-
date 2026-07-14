@@ -4,15 +4,40 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import Parser from 'rss-parser';
-import { generate75NewsStories } from './src/lib/newsGenerator';
+// WatsonX helper — inline (no module dependency needed, shared logic)
+async function watsonxAskAI(prompt: string, opts: { maxTokens?: number; temperature?: number } = {}): Promise<{ text: string; provider: string }> {
+  const KEY = process.env.WATSONX_API_KEY; const PID = process.env.WATSONX_PROJECT_ID;
+  const REGION = process.env.WATSONX_REGION || 'us-south'; const MODEL = process.env.WATSONX_TEXT_MODEL || 'ibm/granite-3-8b-instruct';
+  if (!KEY || !PID) return { text: '', provider: 'none' };
+  const iamR = await fetch('https://iam.cloud.ibm.com/identity/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${encodeURIComponent(KEY)}` });
+  if (!iamR.ok) return { text: '', provider: 'none' };
+  const { access_token } = await iamR.json();
+  const r = await fetch(`https://${REGION}.ml.cloud.ibm.com/ml/v1/text/generation?version=2023-05-29`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${access_token}`}, body: JSON.stringify({ model_id: MODEL, input: prompt, parameters: { max_new_tokens: opts.maxTokens||400, temperature: opts.temperature??0.3 }, project_id: PID }) });
+  if (!r.ok) return { text: '', provider: 'none' };
+  const d = await r.json(); return { text: d.results?.[0]?.generated_text?.trim()||'', provider: 'watsonx' };
+}
 
 dotenv.config();
+
+// ─── WatsonX news generation (IBM-first per GLOBAL_RULES §1) ─────────────────
+async function generateNewsWithWatsonx(targetDate: string): Promise<any[] | null> {
+  const WATSONX_KEY = process.env.WATSONX_API_KEY;
+  const WATSONX_PID = process.env.WATSONX_PROJECT_ID;
+  if (!WATSONX_KEY || !WATSONX_PID) return null;
+  try {
+    const prompt = `date=${targetDate} task=generate-news-hierarchy\nGenerate 13 news items as JSON array with fields: id,level,parentId,categoryName,title,summary,source,link,imageUrl,changePercent,benchmarkLabel\nLevels: Global(1) Geography(2) Country(2) Sector(2) Industry(2) Stock(4)\nReply ONLY with valid JSON array.`;
+    const result = await watsonxAskAI(prompt, { maxTokens: 800, temperature: 0.3 });
+    if (!result.text || result.provider === 'dummy') return null;
+    const parsed = JSON.parse(result.text.replace(/```json|```/g,'').trim());
+    return Array.isArray(parsed) && parsed.length >= 5 ? parsed : null;
+  } catch { return null; }
+}
 
 const rssParser = new Parser();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
   // Set up JSON encoding limit for heavy generation
   app.use(express.json({ limit: '10mb' }));
@@ -62,6 +87,171 @@ async function startServer() {
       lines.push(row);
     }
     return lines;
+  }
+
+  const LIVE_NEWS_RSS_SOURCES = [
+    { source: 'Google News India', url: 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en' },
+    { source: 'Google News World', url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en' },
+    { source: 'Moneycontrol', url: 'https://www.moneycontrol.com/rss/latestnews.xml' },
+    { source: 'Reuters World', url: 'https://feeds.reuters.com/reuters/worldNews' },
+    { source: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
+    { source: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml' },
+    { source: 'NDTV Profit', url: 'https://feeds.feedburner.com/ndtvprofit-latest' }
+  ];
+
+  const LIVE_NEWS_IMAGES = [
+    'https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80'
+  ];
+
+  const cleanText = (value?: string | null) => (value || '').replace(/\s+/g, ' ').trim();
+
+  const inferCategoryLabel = (title: string, level: string) => {
+    const lower = title.toLowerCase();
+
+    if (level === 'Global') return 'Global Macro';
+
+    if (level === 'Geography') {
+      if (/india|mumbai|bharat|nifty|sensex|modi/.test(lower)) return 'India';
+      if (/us|usa|wall street|nasdaq|fed|treasury|s&p|dow jones|america/.test(lower)) return 'United States';
+      if (/china|beijing|shanghai|hong kong|apac|asia/.test(lower)) return 'Asia-Pacific';
+      if (/europe|germany|uk|france|eu|euro|london/.test(lower)) return 'Europe';
+      if (/middle east|uae|saudi|dubai|gulf|qatar|oman/.test(lower)) return 'Middle East & Africa';
+      return 'Global Markets';
+    }
+
+    if (level === 'Country') {
+      if (/india|mumbai|bharat|nifty|sensex|modi/.test(lower)) return 'India';
+      if (/us|usa|wall street|nasdaq|fed|treasury|s&p|dow jones|america/.test(lower)) return 'United States';
+      if (/china|beijing|shanghai|hong kong|apac|asia/.test(lower)) return 'China';
+      if (/europe|germany|uk|france|eu|euro|london/.test(lower)) return 'Europe';
+      if (/japan|tokyo|korea|taiwan|south korea/.test(lower)) return 'East Asia';
+      return 'Market Country';
+    }
+
+    if (/health|pharma|biotech|hospital|vaccine|medical|drug/.test(lower)) return 'Healthcare & Pharma';
+    if (/auto|ev|electric vehicle|battery|car|tesla|motor|maruti|hyundai/.test(lower)) return 'Automotive & EV';
+    if (/energy|oil|gas|power|grid|coal|renewable|utility|solar|wind|hydrogen/.test(lower)) return 'Energy & Utilities';
+    if (/real estate|property|housing|home|mortgage|builder|construction/.test(lower)) return 'Real Estate & Construction';
+    if (/bank|finance|credit|loan|rbi|yield|deficit|inflation|rate|economy|market|equity|stock/.test(lower)) return 'Financial Markets';
+    if (/retail|consumer|fmcg|food|grocery|warehouse|fashion|ecommerce/.test(lower)) return 'Consumer & Retail';
+    if (/telecom|5g|network|mobile|media|broadcast|satellite/.test(lower)) return 'Telecom & Media';
+    if (/agri|farm|crop|wheat|rice|food grain|fertilizer|sugar/.test(lower)) return 'Agriculture & Food';
+    if (/steel|cement|industrial|infrastructure|logistics|transport|shipping|mining/.test(lower)) return 'Industrials & Infrastructure';
+    if (/chip|semiconductor|gpu|ai|software|cloud|tech|cyber|data|startup|cloud/.test(lower)) return 'Technology & AI';
+    if (/airline|travel|tourism/.test(lower)) return 'Travel & Tourism';
+
+    return level === 'Stock' ? 'Market Leader' : level === 'Industry' ? 'Core Industry' : 'Live News';
+  };
+
+  async function fetchLiveNewsTree(dateStr: string) {
+    const feedResults = await Promise.allSettled(
+      LIVE_NEWS_RSS_SOURCES.map(async ({ source, url }) => {
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${source} RSS feed: HTTP ${response.status}`);
+        }
+
+        const xml = await response.text();
+        const feed = await rssParser.parseString(xml);
+        return (feed.items || []).slice(0, 8).map(item => ({
+          title: cleanText(item.title),
+          summary: cleanText(item.contentSnippet || item.summary || item.content),
+          link: item.link || item.guid || '#',
+          source
+        }));
+      })
+    );
+
+    const liveItems = feedResults
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => result.value)
+      .filter(item => item.title && item.link && item.summary);
+
+    feedResults
+      .filter(result => result.status === 'rejected')
+      .forEach(result => {
+        console.warn(`[AI Reader] RSS source skipped: ${result.reason?.message || result.reason}`);
+      });
+
+    const dedupedItems = liveItems.filter((item, index, self) => {
+      const signature = `${item.title}::${item.link}`;
+      return self.findIndex(candidate => `${candidate.title}::${candidate.link}` === signature) === index;
+    });
+
+    const fallbackItems = dedupedItems.length > 0 ? dedupedItems : liveItems;
+    if (fallbackItems.length === 0) {
+      throw new Error('No live RSS headlines could be fetched for the current date.');
+    }
+
+    const storyTemplate = [
+      { id: 'G_AUTO_1', level: 'Global', parentId: null },
+      { id: 'GEO_AUTO_1', level: 'Geography', parentId: 'G_AUTO_1' },
+      { id: 'GEO_AUTO_2', level: 'Geography', parentId: 'G_AUTO_1' },
+      { id: 'GEO_AUTO_3', level: 'Geography', parentId: 'G_AUTO_1' },
+      { id: 'GEO_AUTO_4', level: 'Geography', parentId: 'G_AUTO_1' },
+      { id: 'C_AUTO_1', level: 'Country', parentId: 'GEO_AUTO_1' },
+      { id: 'C_AUTO_2', level: 'Country', parentId: 'GEO_AUTO_2' },
+      { id: 'C_AUTO_3', level: 'Country', parentId: 'GEO_AUTO_3' },
+      { id: 'C_AUTO_4', level: 'Country', parentId: 'GEO_AUTO_4' },
+      { id: 'S_AUTO_1', level: 'Sector', parentId: 'C_AUTO_1' },
+      { id: 'S_AUTO_2', level: 'Sector', parentId: 'C_AUTO_1' },
+      { id: 'S_AUTO_3', level: 'Sector', parentId: 'C_AUTO_2' },
+      { id: 'S_AUTO_4', level: 'Sector', parentId: 'C_AUTO_2' },
+      { id: 'S_AUTO_5', level: 'Sector', parentId: 'C_AUTO_3' },
+      { id: 'S_AUTO_6', level: 'Sector', parentId: 'C_AUTO_3' },
+      { id: 'S_AUTO_7', level: 'Sector', parentId: 'C_AUTO_4' },
+      { id: 'S_AUTO_8', level: 'Sector', parentId: 'C_AUTO_4' },
+      { id: 'I_AUTO_1', level: 'Industry', parentId: 'S_AUTO_1' },
+      { id: 'I_AUTO_2', level: 'Industry', parentId: 'S_AUTO_2' },
+      { id: 'I_AUTO_3', level: 'Industry', parentId: 'S_AUTO_3' },
+      { id: 'I_AUTO_4', level: 'Industry', parentId: 'S_AUTO_4' },
+      { id: 'I_AUTO_5', level: 'Industry', parentId: 'S_AUTO_5' },
+      { id: 'I_AUTO_6', level: 'Industry', parentId: 'S_AUTO_6' },
+      { id: 'I_AUTO_7', level: 'Industry', parentId: 'S_AUTO_7' },
+      { id: 'I_AUTO_8', level: 'Industry', parentId: 'S_AUTO_8' },
+      { id: 'ST_AUTO_1', level: 'Stock', parentId: 'I_AUTO_1' },
+      { id: 'ST_AUTO_2', level: 'Stock', parentId: 'I_AUTO_1' },
+      { id: 'ST_AUTO_3', level: 'Stock', parentId: 'I_AUTO_2' },
+      { id: 'ST_AUTO_4', level: 'Stock', parentId: 'I_AUTO_2' },
+      { id: 'ST_AUTO_5', level: 'Stock', parentId: 'I_AUTO_3' },
+      { id: 'ST_AUTO_6', level: 'Stock', parentId: 'I_AUTO_3' },
+      { id: 'ST_AUTO_7', level: 'Stock', parentId: 'I_AUTO_4' },
+      { id: 'ST_AUTO_8', level: 'Stock', parentId: 'I_AUTO_4' },
+      { id: 'ST_AUTO_9', level: 'Stock', parentId: 'I_AUTO_5' },
+      { id: 'ST_AUTO_10', level: 'Stock', parentId: 'I_AUTO_5' },
+      { id: 'ST_AUTO_11', level: 'Stock', parentId: 'I_AUTO_6' },
+      { id: 'ST_AUTO_12', level: 'Stock', parentId: 'I_AUTO_6' },
+      { id: 'ST_AUTO_13', level: 'Stock', parentId: 'I_AUTO_7' },
+      { id: 'ST_AUTO_14', level: 'Stock', parentId: 'I_AUTO_7' },
+      { id: 'ST_AUTO_15', level: 'Stock', parentId: 'I_AUTO_8' },
+      { id: 'ST_AUTO_16', level: 'Stock', parentId: 'I_AUTO_8' }
+    ];
+
+    return storyTemplate.map((template, index) => {
+      const item = fallbackItems[index % fallbackItems.length] || fallbackItems[fallbackItems.length - 1];
+      const title = item.title;
+      const summary = item.summary.length > 360 ? `${item.summary.slice(0, 357)}...` : item.summary;
+      return {
+        ...template,
+        categoryName: inferCategoryLabel(title, template.level),
+        title,
+        summary: `${summary} (${dateStr})`,
+        source: item.source,
+        link: item.link,
+        imageUrl: LIVE_NEWS_IMAGES[index % LIVE_NEWS_IMAGES.length],
+        date: dateStr,
+        changePercent: 0,
+        benchmarkLabel: template.level === 'Stock' ? 'Live Market' : 'Live Index'
+      };
+    });
   }
 
   // Get sheet list (tabs formatted as dates YYYY-MM-DD or other general names) from a public spreadsheet URL
@@ -320,8 +510,8 @@ async function startServer() {
       res.json({ success: true, newsItems });
     } catch (err: any) {
       try {
-        const generatedItems = generate75NewsStories(String(dateStr));
-        return res.json({ success: true, newsItems: generatedItems });
+        const liveItems = await fetchLiveNewsTree(String(dateStr || new Date().toISOString().split('T')[0]));
+        return res.json({ success: true, newsItems: liveItems });
       } catch (fallbackErr) {
         let errorMessage = err.message || 'Failed to fetch from Google Sheets';
         if (errorMessage.includes('404')) {
@@ -337,193 +527,29 @@ async function startServer() {
     const { dateStr } = req.body;
     const targetDate = dateStr || new Date().toISOString().split('T')[0];
 
-    // Perfect, high-fidelity dynamic fallback generator to bypass 429 rate-limiting gracefully
-    const getFallbackPortalNews = (date: string) => [
-      {
-        id: 'G_AUTO_1',
-        level: 'Global',
-        parentId: null,
-        categoryName: 'Global Macro',
-        title: `Global Inflation Cools to 3.1% as Energy Prices Restructure`,
-        summary: `According to data aggregated from Google News, global inflation averages has cooled down to a manageable 3.1%. The cooling of global energy and food indices fuels widespread speculation that major central banks will cut prime discount lending rates in the final quarter.`,
-        source: 'Google News',
-        link: 'https://news.google.com',
-        imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
-        changePercent: 0.25,
-        benchmarkLabel: 'MSCI World'
-      },
-      {
-        id: 'GEO_AUTO_1',
-        level: 'Geography',
-        parentId: 'G_AUTO_1',
-        categoryName: 'Asia-Pacific',
-        title: `Asia-Pacific Indices Rally Following Global Manufacturing Surges`,
-        summary: `Index benchmarks across the Asia-Pacific region advanced by an impressive 1.85% today. Driven by revised manufacturing statistics in industrial output bases, foreign institutional investors moved heavily into regional capital markets, indicating strong long-term resilience.`,
-        source: 'Moneycontrol',
-        link: 'https://www.moneycontrol.com',
-        imageUrl: 'https://images.unsplash.com/photo-1542241647-9cbb2225278b?auto=format&fit=crop&w=800&q=80',
-        changePercent: 1.85,
-        benchmarkLabel: 'APAC Index'
-      },
-      {
-        id: 'GEO_AUTO_2',
-        level: 'Geography',
-        parentId: 'G_AUTO_1',
-        categoryName: 'North America',
-        title: `Wall Street Futures Jump Imposing New All-Time High Projections`,
-        summary: `In North American core markets, S&P 500 futures rallied by 0.94% ahead of the closing bell on ${date}. Retail consumption and strong jobs performance have insulated the continent from high interest-rate headwinds, fueling confidence in solid corporate margins.`,
-        source: 'Bloomberg Markets',
-        link: 'https://www.bloomberg.com',
-        imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
-        changePercent: 0.94,
-        benchmarkLabel: 'S&P 500'
-      },
-      {
-        id: 'C_AUTO_1',
-        level: 'Country',
-        parentId: 'GEO_AUTO_1',
-        categoryName: 'India',
-        title: `Nifty 50 Rebalances Upwards Supported by Heavyweight Capital Inflows`,
-        summary: `Trading desks on Moneycontrol observed India's benchmark Nifty 50 surging higher as domestic mutual fund flows offset temporary bond yield volatility. Key drivers continue to be tech infrastructure spends and positive retail sales across tier-2 cities.`,
-        source: 'Moneycontrol',
-        link: 'https://www.moneycontrol.com',
-        imageUrl: 'https://images.unsplash.com/photo-1532601124523-3000dfd51ad0?auto=format&fit=crop&w=800&q=80',
-        changePercent: 1.15,
-        benchmarkLabel: 'NIFTY 50'
-      },
-      {
-        id: 'C_AUTO_2',
-        level: 'Country',
-        parentId: 'GEO_AUTO_2',
-        categoryName: 'United States',
-        title: `US Treasury Yields Stabilize as Consumer Sentiments Rebound`,
-        summary: `As reported across Google News, the US 10-year Treasury yield stabilized around 4.12%, while consumer resilience markers recorded a 14-month peak. Broad industrial machinery investments remain robust, pointing to a smooth economic runway ahead.`,
-        source: 'Reuters',
-        link: 'https://www.reuters.com',
-        imageUrl: 'https://images.unsplash.com/photo-1502920514313-52581002a659?auto=format&fit=crop&w=800&q=80',
-        changePercent: -0.05,
-        benchmarkLabel: 'US 10Y Yield'
-      },
-      {
-        id: 'S_AUTO_1',
-        level: 'Sector',
-        parentId: 'C_AUTO_1',
-        categoryName: 'Technology & IT',
-        title: `Cloud Modernization and Enterprise Web Spends Rise by 16% in India`,
-        summary: `The Indian IT services sector is receiving heavy digital infrastructure modernizing workloads. A surge in long-term enterprise SaaS contracts and hybrid cloud optimization requests are leading to positive guidance for top-tier software exporters.`,
-        source: 'The Economic Times',
-        link: 'https://economictimes.indiatimes.com',
-        imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80',
-        changePercent: 1.60,
-        benchmarkLabel: 'NIFTY IT'
-      },
-      {
-        id: 'S_AUTO_2',
-        level: 'Sector',
-        parentId: 'C_AUTO_2',
-        categoryName: 'Semiconductors',
-        title: `Silicon Foundry Substrate Orders Outpace Capacity Limits`,
-        summary: `Semiconductor hardware demands continue to experience unprecedented growth cycles. Advanced packaging and high-bandwidth memory allocations have kept foundries operating at 94% of total output capabilities, pushing forward physical factory updates.`,
-        source: 'Bloomberg Markets',
-        link: 'https://www.bloomberg.com',
-        imageUrl: 'https://images.unsplash.com/photo-1591453089816-0fbb971b454c?auto=format&fit=crop&w=800&q=80',
-        changePercent: 2.10,
-        benchmarkLabel: 'SOX Index'
-      },
-      {
-        id: 'I_AUTO_1',
-        level: 'Industry',
-        parentId: 'S_AUTO_1',
-        categoryName: 'SaaS & Consulting',
-        title: `Software Exports Experience Strong Boost on Gen-AI Deployments`,
-        summary: `According to Moneycontrol analysis, consulting firms are seeing direct conversions from AI pilot programs to production rollouts. Corporate budgets are actively shifting from legacy systems to support responsive enterprise intelligence assistants.`,
-        source: 'Moneycontrol',
-        link: 'https://www.moneycontrol.com',
-        imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
-        changePercent: 1.80,
-        benchmarkLabel: 'SaaS Index'
-      },
-      {
-        id: 'I_AUTO_2',
-        level: 'Industry',
-        parentId: 'S_AUTO_2',
-        categoryName: 'GPU Hardware',
-        title: `GPU Accelerators Surge to Top-tier of Global Equipment Trade`,
-        summary: `High-density accelerator hardware supply remains extremely tight. The rapid proliferation of custom machine learning model clusters has established processing silicon as the standard strategic capital investment metric of the decade.`,
-        source: 'Google News',
-        link: 'https://news.google.com',
-        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
-        changePercent: 3.30,
-        benchmarkLabel: 'Hardware Core'
-      },
-      {
-        id: 'ST_AUTO_1',
-        level: 'Stock',
-        parentId: 'I_AUTO_1',
-        categoryName: 'Infosys Ltd',
-        title: `Infosys Shares Rally 3.4% on Multi-Million Dollar Cloud Deals`,
-        summary: `Infosys Limited (NSE: INFY) stock witnessed a sudden bullish breakout. The company reported locking in a significant 3-year agreement with European banking consortiums, focusing heavily on modernizing core middleware security.`,
-        source: 'Moneycontrol',
-        link: 'https://www.moneycontrol.com/india/stockpricequote/computers-software/infosys/IT',
-        imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
-        changePercent: 3.40,
-        benchmarkLabel: 'INFY'
-      },
-      {
-        id: 'ST_AUTO_2',
-        level: 'Stock',
-        parentId: 'I_AUTO_1',
-        categoryName: 'Tata Consultancy Services',
-        title: `TCS Stock Jumps Over Margin Growth and Solid Dividend Yields`,
-        summary: `Tata Consultancy Services (NSE: TCS) posted strong quarterly profits, outperforming general competitor predictions. High performance in global consulting services helped TCS sustain record operating margins above 25%.`,
-        source: 'The Economic Times',
-        link: 'https://economictimes.indiatimes.com',
-        imageUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80',
-        changePercent: 1.95,
-        benchmarkLabel: 'TCS'
-      },
-      {
-        id: 'ST_AUTO_3',
-        level: 'Stock',
-        parentId: 'I_AUTO_2',
-        categoryName: 'NVIDIA Corp',
-        title: `NVIDIA Stock Touches Record Highs Following Stellar Chip Demands`,
-        summary: `NVIDIA (NASDAQ: NVDA) market valuation advanced by over $48B in a single trading session. Financial analysts highlighted that corporate hyperscalers continue to double down on custom cluster boards to support high-performance model layers.`,
-        source: 'Bloomberg Markets',
-        link: 'https://www.bloomberg.com',
-        imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-        changePercent: 4.85,
-        benchmarkLabel: 'NVDA'
-      },
-      {
-        id: 'ST_AUTO_4',
-        level: 'Stock',
-        parentId: 'I_AUTO_2',
-        categoryName: 'Advanced Micro Devices',
-        title: `AMD Stock Outperforms Industry Peers on New Accelerator Lineup`,
-        summary: `Advanced Micro Devices (NASDAQ: AMD) introduced its latest high-density accelerators, driving retail and institutional interest. Early benchmark results indicate AMD is positioning itself as a premium competitive options provider inside multi-tenant environments.`,
-        source: 'Google News',
-        link: 'https://news.google.com',
-        imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-        changePercent: 3.25,
-        benchmarkLabel: 'AMD'
-      }
-    ];
-
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        console.warn('[AI Reader] GEMINI_API_KEY is not defined. Using high-fidelity fallback news.');
+        console.warn('[AI Reader] GEMINI_API_KEY is not defined. Fetching live RSS news directly.');
+        const liveNews = await fetchLiveNewsTree(targetDate);
         return res.json({
           success: true,
           date: targetDate,
-          newsItems: getFallbackPortalNews(targetDate),
-          isFallback: true,
-          notice: "Using pre-curated high-fidelity portal news fallback (GEMINI_API_KEY not configured)."
+          newsItems: liveNews,
+          isFallback: false,
+          notice: 'Fetched today’s live headlines directly from RSS news sources.'
         });
       }
 
-      // Initialize Gemini client on server dynamically to prevent startup failure
+      // Tier 1: IBM WatsonX (GLOBAL_RULES §1)
+      const wxNews = await generateNewsWithWatsonx(targetDate);
+      if (wxNews) {
+        console.log('[AI] ✅ WatsonX news generation succeeded');
+        return res.json({ success: true, date: targetDate, newsItems: wxNews, isFallback: false, provider: 'watsonx' });
+      }
+      console.log('[AI] WatsonX unavailable → trying Gemini');
+
+      // Tier 2: Gemini (structured output)
       const ai = new GoogleGenAI({
         apiKey: apiKey,
         httpOptions: {
@@ -622,24 +648,21 @@ Ensure strict JSON output structure matching the provided schema.`;
       });
 
     } catch (error: any) {
-      console.error('[AI Reader Backend Rate Limit/Quota Fallback Triggered]:', error);
-      
+      console.error('[AI Reader Backend live fetch fallback triggered]:', error);
+
       try {
-        const generatedItems = generate75NewsStories(String(targetDate));
-        res.json({
+        const liveNews = await fetchLiveNewsTree(targetDate);
+        return res.json({
           success: true,
           date: targetDate,
-          newsItems: generatedItems,
-          isFallback: true,
-          notice: `The server's Gemini API Key is hitting rate limits or has exhausted its quota (429 Resource Exhausted). We successfully activated our extremely high-fidelity investment database with 75 comprehensive news stories covering 51 specific stocks!`
+          newsItems: liveNews,
+          isFallback: false,
+          notice: 'Fetched today’s live headlines directly from RSS news sources after the outlet returned an error.'
         });
       } catch (fallbackError: any) {
-        res.json({
-          success: true,
-          date: targetDate,
-          newsItems: getFallbackPortalNews(targetDate),
-          isFallback: true,
-          notice: `Served 13 pre-curated fallback news items due to internal error: ${fallbackError.message}`
+        return res.status(502).json({
+          success: false,
+          error: `Unable to fetch today’s live news headlines: ${fallbackError.message}`
         });
       }
     }

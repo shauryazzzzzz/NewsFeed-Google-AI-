@@ -6,14 +6,30 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
-// Request Workspace scopes
+provider.setCustomParameters({
+  prompt: 'select_account',
+  access_type: 'offline'
+});
+// Request Workspace scopes needed for multi-sheet monitoring and tab creation.
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+provider.addScope('https://www.googleapis.com/auth/drive');
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 
 // Flag to indicate if we are in the middle of a sign-in flow.
 let isSigningIn = false;
 // Cache the access token in memory.
 let cachedAccessToken: string | null = null;
+
+const clearCachedAccessToken = () => {
+  cachedAccessToken = null;
+  try {
+    localStorage.removeItem('news_oauth_token');
+    sessionStorage.removeItem('news_oauth_token');
+  } catch (e) {
+    // ignore
+  }
+};
+
 // Store in storage to persist on refresh but keep safe
 try {
   const saved = localStorage.getItem('news_oauth_token') || sessionStorage.getItem('news_oauth_token');
@@ -50,11 +66,7 @@ export const initAuth = (
         if (onAuthFailure) onAuthFailure();
       }
     } else {
-      cachedAccessToken = null;
-      try {
-        localStorage.removeItem('news_oauth_token');
-        sessionStorage.removeItem('news_oauth_token');
-      } catch (e) {}
+      clearCachedAccessToken();
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -66,11 +78,12 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
+    const accessToken = credential?.accessToken || (result.user as any)?.stsTokenManager?.accessToken;
+    if (!accessToken) {
       throw new Error('Failed to get access token from Firebase Auth');
     }
 
-    cachedAccessToken = credential.accessToken;
+    cachedAccessToken = accessToken;
     try {
       localStorage.setItem('news_oauth_token', cachedAccessToken);
       sessionStorage.setItem('news_oauth_token', cachedAccessToken);
@@ -90,9 +103,7 @@ export const getAccessToken = async (): Promise<string | null> => {
 
 export const logout = async () => {
   await signOut(auth);
-  cachedAccessToken = null;
-  try {
-    localStorage.removeItem('news_oauth_token');
-    sessionStorage.removeItem('news_oauth_token');
-  } catch (e) {}
+  clearCachedAccessToken();
 };
+
+export { clearCachedAccessToken };

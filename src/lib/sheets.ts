@@ -16,6 +16,11 @@ async function sheetsFetch(url: string, token: string, options: RequestInit = {}
         errMsg = parsed.error.message;
       }
     } catch (e) {}
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Google authentication credentials are invalid or expired. Please sign in again to continue writing to Google Sheets.');
+    }
+
     throw new Error(errMsg);
   }
   return res.json();
