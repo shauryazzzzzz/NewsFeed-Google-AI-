@@ -682,6 +682,17 @@ Ensure strict JSON output structure matching the provided schema.`;
     }
   });
 
+  // Alias: GET /api/news — returns live RSS hierarchy for NewsMapPage integration
+  app.get('/api/news', async (req, res) => {
+    try {
+      const targetDate = new Date().toISOString().split('T')[0];
+      const items = await fetchLiveNewsTree(targetDate);
+      res.json({ success: true, items, count: items.length, source: 'rss-live' });
+    } catch (e) {
+      res.status(500).json({ success: false, error: (e as Error).message, items: [] });
+    }
+  });
+
   // Vite development middleware vs Static serve
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

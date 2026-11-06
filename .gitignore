@@ -9,3 +9,5 @@ coverage/
 
 # Firebase config contains API key — exclude from version control
 firebase-applet-config.json
+
+nf-out.txt
