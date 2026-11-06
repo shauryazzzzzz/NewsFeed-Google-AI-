@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase config contains API key — exclude from version control
+firebase-applet-config.json

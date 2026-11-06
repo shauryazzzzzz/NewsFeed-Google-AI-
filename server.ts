@@ -1,13 +1,29 @@
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import Parser from 'rss-parser';
+
+// ── Key loading (highest priority first) ──────────────────────────────────────
+// 1. Real process.env  2. .env.local (Gemini key, PORT)  3. commons/secrets.env
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // also load .env if present
+// Load workspace commons/secrets.env for WATSONX_* fallback (sets keys not yet set)
+const _req = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+try {
+  const { loadSharedEnv } = _req(path.join(__dirname, '..', 'commons', 'load-env.js'));
+  loadSharedEnv();
+} catch { /* commons/secrets.env not present — project-local .env.local keys used */ }
+
 // WatsonX helper — inline (no module dependency needed, shared logic)
+// Keys now sourced from commons/secrets.env → see CREDENTIALS_REFERENCE.md
 async function watsonxAskAI(prompt: string, opts: { maxTokens?: number; temperature?: number } = {}): Promise<{ text: string; provider: string }> {
   const KEY = process.env.WATSONX_API_KEY; const PID = process.env.WATSONX_PROJECT_ID;
-  const REGION = process.env.WATSONX_REGION || 'us-south'; const MODEL = process.env.WATSONX_TEXT_MODEL || 'ibm/granite-3-8b-instruct';
+  const REGION = process.env.WATSONX_REGION || 'us-south'; const MODEL = process.env.WATSONX_TEXT_MODEL || 'ibm/granite-4-h-small';
   if (!KEY || !PID) return { text: '', provider: 'none' };
   const iamR = await fetch('https://iam.cloud.ibm.com/identity/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${encodeURIComponent(KEY)}` });
   if (!iamR.ok) return { text: '', provider: 'none' };
@@ -16,8 +32,6 @@ async function watsonxAskAI(prompt: string, opts: { maxTokens?: number; temperat
   if (!r.ok) return { text: '', provider: 'none' };
   const d = await r.json(); return { text: d.results?.[0]?.generated_text?.trim()||'', provider: 'watsonx' };
 }
-
-dotenv.config();
 
 // ─── WatsonX news generation (IBM-first per GLOBAL_RULES §1) ─────────────────
 async function generateNewsWithWatsonx(targetDate: string): Promise<any[] | null> {
@@ -37,7 +51,7 @@ const rssParser = new Parser();
 
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT || '3000', 10);
+  const PORT = parseInt(process.env.PORT || '3002', 10);
 
   // Set up JSON encoding limit for heavy generation
   app.use(express.json({ limit: '10mb' }));

@@ -1,20 +1,35 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# NewsFeed Google AI — News Intelligence Dashboard
 
-# Run and deploy your AI Studio app
+## What it does
+Full-stack news intelligence dashboard powered by Google Gemini AI and IBM watsonx. Fetches live RSS news, organises into a hierarchical tree, and generates AI summaries.
 
-This contains everything you need to run your app locally.
+## What was fixed
+- Default port changed from `:3000` → `:3002` (avoids conflicts)
+- `start.bat` updated to use `node node_modules/tsx/dist/cli.mjs server.ts` (bypasses broken `.bin` shim)
+- `.env.local` created with all required keys
 
-View your app in AI Studio: https://ai.studio/apps/8db40233-3796-49cb-a500-9b7543e33e26
+## How to run
+```bat
+start.bat
+```
+Or manually:
+```bash
+node node_modules/tsx/dist/cli.mjs server.ts
+```
 
-## Run Locally
+## Port
+- Backend + Frontend (Vite dev): **http://localhost:3002**
 
-**Prerequisites:**  Node.js
+## .env variables needed
+```
+PORT=3002
+WATSONX_API_KEY=...
+WATSONX_PROJECT_ID=...
+GEMINI_API_KEY=...
+DEFAULT_SPREADSHEET_ID=...
+```
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Test
+```bash
+node test.mjs
+```
